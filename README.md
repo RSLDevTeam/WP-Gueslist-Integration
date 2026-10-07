@@ -55,6 +55,20 @@ add_action('guestlist_integration_request_failed', function (string $operation, 
 
 The adapter deliberately does not assume WooCommerce, ACF, user meta names, or a franchise schema. Those belong in a small project-specific mapping layer, while this plugin owns authentication, API transport, retries, and consistent result hooks.
 
+## Automated releases
+
+Pushes to `main` are versioned by `.github/workflows/release.yml`. The workflow updates both the WordPress plugin header and `GUESTLIST_INTEGRATION_VERSION`, creates an annotated `vX.Y.Z` tag, and publishes a GitHub Release with generated notes.
+
+Use [Conventional Commit](https://www.conventionalcommits.org/) prefixes for changes that should release:
+
+| Commit prefix | Version change |
+| --- | --- |
+| `fix:` or `perf:` | Patch: `0.1.0` → `0.1.1` |
+| `feat:` | Minor: `0.1.0` → `0.2.0` |
+| `feat!:` or a `BREAKING CHANGE:` footer | Major: `0.1.0` → `1.0.0` |
+
+Commits such as `docs:`, `chore:`, and `test:` do not create a release. The first run creates the baseline tag from the plugin's current version. The repository's GitHub Actions workflow permissions must allow **Read and write permissions** for the `GITHUB_TOKEN`.
+
 ## Backstage migration boundary
 
 This project is an isolated foundation. Do not activate it alongside the current theme integration expecting a complete replacement. The existing theme still owns entitlement rules, WooCommerce product flags, account UI, franchise payload mapping, seat sync, and the inbound booking endpoint. Those pieces need to move into an optional Backstage adapter before the theme's `inc/guestlist-sync.php` and `apis/endpoints/guestlist-booking-link.php` are removed.

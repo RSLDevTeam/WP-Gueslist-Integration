@@ -1,0 +1,91 @@
+name: Release plugin
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    # The release commit triggers this workflow too; never release it again.
+    if: "!startsWith(github.event.head_commit.message, 'chore(release):')"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out complete history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Calculate the release version
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          latest_tag="$(git tag --list 'v*' --sort=-version:refname | head -n 1 || true)"
+          if [[ -z "$latest_tag" ]]; then
+            echo "version=$(awk '/^ \* Version: / { print $3; exit }' guestlist-integration.php)" >> "$GITHUB_OUTPUT"
+            echo "release=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          commits="$(git log --format=%B "${latest_tag}..HEAD")"
+          bump="none"
+          if grep -Eq 'BREAKING CHANGE:|^[a-z]+(\([^)]+\))?!:' <<< "$commits"; then
+            bump="major"
+          elif grep -Eq '^feat(\([^)]+\))?:' <<< "$commits"; then
+            bump="minor"
+          elif grep -Eq '^(fix|perf)(\([^)]+\))?:' <<< "$commits"; then
+            bump="patch"
+          fi
+
+          if [[ "$bump" == "none" ]]; then
+            echo "release=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          current="${latest_tag#v}"
+          IFS='.' read -r major minor patch <<< "$current"
+          case "$bump" in
+            major) major=$((major + 1)); minor=0; patch=0 ;;
+            minor) minor=$((minor + 1)); patch=0 ;;
+            patch) patch=$((patch + 1)) ;;
+          esac
+
+          echo "version=${major}.${minor}.${patch}" >> "$GITHUB_OUTPUT"
+          echo "release=true" >> "$GITHUB_OUTPUT"
+
+      - name: Update plugin version
+        if: steps.version.outputs.release == 'true'
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          sed -i -E "s/( \* Version: )[0-9]+\.[0-9]+\.[0-9]+/\\1${VERSION}/" guestlist-integration.php
+          sed -i -E "s/(GUESTLIST_INTEGRATION_VERSION', ')[0-9]+\.[0-9]+\.[0-9]+/\\1${VERSION}/" guestlist-integration.php
+          grep -F "Version: ${VERSION}" guestlist-integration.php
+          grep -F "GUESTLIST_INTEGRATION_VERSION', '${VERSION}'" guestlist-integration.php
+
+      - name: Commit and tag release
+        if: steps.version.outputs.release == 'true'
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add guestlist-integration.php
+          git commit -m "chore(release): v${VERSION}"
+          git tag -a "v${VERSION}" -m "v${VERSION}"
+          git push origin HEAD:main --follow-tags
+
+      - name: Create GitHub release
+        if: steps.version.outputs.release == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: gh release create "v${VERSION}" --generate-notes --title "v${VERSION}"
