@@ -14,9 +14,11 @@ define('GUESTLIST_INTEGRATION_PATH', plugin_dir_path(__FILE__));
 
 require_once GUESTLIST_INTEGRATION_PATH . 'includes/class-guestlist-settings.php';
 require_once GUESTLIST_INTEGRATION_PATH . 'includes/class-guestlist-api-client.php';
+require_once GUESTLIST_INTEGRATION_PATH . 'includes/class-guestlist-project-adapter.php';
 
 add_action('plugins_loaded', static function () {
     Guestlist_Integration_Settings::register();
+    Guestlist_Integration_Project_Adapter::register();
 });
 
 /**
@@ -32,4 +34,26 @@ function guestlist_integration_client(): Guestlist_Integration_Api_Client {
     }
 
     return $client;
+}
+
+/**
+ * Register a franchise through the standard project adapter contract.
+ *
+ * @param array $payload Guestlist franchise-registration payload.
+ * @param array $context Optional project-only context.
+ */
+function guestlist_integration_register_franchise(array $payload, array $context = []): void {
+    do_action('guestlist_integration_register_franchise', $payload, $context);
+}
+
+/**
+ * Update a franchise's status through the standard project adapter contract.
+ *
+ * @param int    $backstage_id Guestlist Backstage franchise ID.
+ * @param string $action disable or reenable.
+ * @param string $reason Optional reason for a disable.
+ * @param array  $context Optional project-only context.
+ */
+function guestlist_integration_change_franchise_status(int $backstage_id, string $action, string $reason = '', array $context = []): void {
+    do_action('guestlist_integration_change_franchise_status', $backstage_id, $action, $reason, $context);
 }
