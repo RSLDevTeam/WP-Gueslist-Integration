@@ -108,13 +108,9 @@ Requires WordPress 5.8 or later and PHP 7.4 or later. Releases now include an in
 
 Install this updater-enabled version once through **Plugins → Add New → Upload Plugin**, using the ZIP from a new GitHub release (confirm replacement if prompted). Installations made before this change cannot discover it automatically. After that, higher released versions appear under **Plugins → Update now** and **Dashboard → Updates**. To install future releases automatically, choose **Enable auto-updates** for this plugin on the Plugins screen. WordPress controls the schedule; publishing a release does not immediately update every site. The plugin must be active to register its update hooks.
 
-For a private repository, configure a fine-grained GitHub token with **Contents: Read-only** access to this repository in `wp-config.php`, before the stop-editing line:
+Updates use the public GitHub repository and require no GitHub token, `wp-config.php` entry, hosting environment variable, or `.env` file. Release checks and ZIP downloads are unauthenticated. The repository and release ZIP must remain publicly accessible.
 
-```php
-define('GUESTLIST_INTEGRATION_GITHUB_TOKEN', 'YOUR_READ_ONLY_TOKEN');
-```
-
-Authorize the token for the organization if required. Public repositories work without a token. Tokens are used only for GitHub API requests, never placed in update URLs or forwarded to the asset download host. Release checks are cached for 15 minutes, or five minutes after a failure. After fixing access or publishing a release, allow that cache to expire before checking again.
+Release checks are cached for 15 minutes, or five minutes after a failure. After publishing a release or restoring public access, allow that cache to expire, then use **Dashboard → Updates → Check again**.
 
 Existing releases without the ZIP asset will not be offered. Push this change with a `feat:` commit to `main` to create a new version and ZIP through the release workflow. WordPress settings are stored separately in the database and survive plugin-file updates; keep project-specific adapters outside this plugin directory so an update does not replace them.
 

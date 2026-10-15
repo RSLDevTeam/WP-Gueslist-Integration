@@ -14,11 +14,7 @@ final class Guestlist_Integration_Updater {
     }
 
     private static function headers(string $accept): array {
-        $headers = ['Accept' => $accept, 'User-Agent' => 'Guestlist-Integration-WordPress'];
-        if (defined('GUESTLIST_INTEGRATION_GITHUB_TOKEN') && GUESTLIST_INTEGRATION_GITHUB_TOKEN !== '') {
-            $headers['Authorization'] = 'Bearer ' . GUESTLIST_INTEGRATION_GITHUB_TOKEN;
-        }
-        return $headers;
+        return ['Accept' => $accept, 'User-Agent' => 'Guestlist-Integration-WordPress'];
     }
 
     public static function check_update($update, array $plugin_data, string $plugin_file, array $locales) {
@@ -66,7 +62,7 @@ final class Guestlist_Integration_Updater {
         ];
     }
 
-    /** Authenticate only to our asset API; never forward the token on redirects. */
+    /** Download our public release asset and validate its redirect destination. */
     public static function download_package($reply, string $package, $upgrader, array $hook_extra = []) {
         $prefix = 'https://api.github.com/repos/' . self::REPOSITORY . '/releases/assets/';
         if (false !== $reply || !preg_match('#^' . preg_quote($prefix, '#') . '[0-9]+$#D', $package)) {
@@ -96,10 +92,10 @@ final class Guestlist_Integration_Updater {
             $host = wp_parse_url($location, PHP_URL_HOST);
             if ('https' === wp_parse_url($location, PHP_URL_SCHEME)
                 && is_string($host) && preg_match('/(^|\.)githubusercontent\.com$/D', $host)) {
-                // download_url makes a new request without the GitHub credential.
+                // download_url fetches the validated public asset URL.
                 return download_url($location);
             }
         }
-        return new WP_Error('guestlist_update_download', 'Could not download the Guestlist release. Check repository access and the GitHub token.');
+        return new WP_Error('guestlist_update_download', 'Could not download the Guestlist release. Check that the repository and release ZIP are publicly accessible.');
     }
 }
