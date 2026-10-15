@@ -69,6 +69,22 @@ Use [Conventional Commit](https://www.conventionalcommits.org/) prefixes for cha
 
 Commits such as `docs:`, `chore:`, and `test:` do not create a release. The first run creates the baseline tag from the plugin's current version. The repository's GitHub Actions workflow permissions must allow **Read and write permissions** for the `GITHUB_TOKEN`.
 
+## Updates from WordPress
+
+Requires WordPress 5.8 or later and PHP 7.4 or later. Releases now include an installable `guestlist-integration.zip` containing the plugin in a stable `guestlist-integration` folder. The plugin checks the latest published, stable GitHub release through WordPress's native update system. Drafts, prereleases, and releases without this ZIP are ignored.
+
+Install this updater-enabled version once through **Plugins → Add New → Upload Plugin**, using the ZIP from a new GitHub release (confirm replacement if prompted). Installations made before this change cannot discover it automatically. After that, higher released versions appear under **Plugins → Update now** and **Dashboard → Updates**. To install future releases automatically, choose **Enable auto-updates** for this plugin on the Plugins screen. WordPress controls the schedule; publishing a release does not immediately update every site. The plugin must be active to register its update hooks.
+
+For a private repository, configure a fine-grained GitHub token with **Contents: Read-only** access to this repository in `wp-config.php`, before the stop-editing line:
+
+```php
+define('GUESTLIST_INTEGRATION_GITHUB_TOKEN', 'YOUR_READ_ONLY_TOKEN');
+```
+
+Authorize the token for the organization if required. Public repositories work without a token. Tokens are used only for GitHub API requests, never placed in update URLs or forwarded to the asset download host. Release checks are cached for 15 minutes, or five minutes after a failure. After fixing access or publishing a release, allow that cache to expire before checking again.
+
+Existing releases without the ZIP asset will not be offered. Push this change with a `feat:` commit to `main` to create a new version and ZIP through the release workflow. WordPress settings are stored separately in the database and survive plugin-file updates; keep project-specific adapters outside this plugin directory so an update does not replace them.
+
 ## Backstage migration boundary
 
 This project is an isolated foundation. Do not activate it alongside the current theme integration expecting a complete replacement. The existing theme still owns entitlement rules, WooCommerce product flags, account UI, franchise payload mapping, seat sync, and the inbound booking endpoint. Those pieces need to move into an optional Backstage adapter before the theme's `inc/guestlist-sync.php` and `apis/endpoints/guestlist-booking-link.php` are removed.

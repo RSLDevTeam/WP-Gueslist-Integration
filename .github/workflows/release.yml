@@ -70,6 +70,13 @@ jobs:
           grep -F "Version: ${VERSION}" guestlist-integration.php
           grep -F "GUESTLIST_INTEGRATION_VERSION', '${VERSION}'" guestlist-integration.php
 
+      - name: Validate plugin
+        if: steps.version.outputs.release == 'true'
+        run: |
+          set -euo pipefail
+          find . -name '*.php' -print0 | xargs -0 -n 1 php -l
+          php tests/updater.php
+
       - name: Commit and tag release
         if: steps.version.outputs.release == 'true'
         env:
@@ -85,9 +92,19 @@ jobs:
           git tag -a "v${VERSION}" -m "v${VERSION}"
           git push origin HEAD:main --follow-tags
 
+      - name: Build WordPress plugin ZIP
+        if: steps.version.outputs.release == 'true'
+        run: |
+          set -euo pipefail
+          mkdir -p dist/guestlist-integration
+          cp guestlist-integration.php README.md dist/guestlist-integration/
+          cp -R includes dist/guestlist-integration/
+          cd dist
+          zip -r guestlist-integration.zip guestlist-integration
+
       - name: Create GitHub release
         if: steps.version.outputs.release == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.version.outputs.version }}
-        run: gh release create "v${VERSION}" --generate-notes --title "v${VERSION}"
+        run: gh release create "v${VERSION}" dist/guestlist-integration.zip --generate-notes --title "v${VERSION}"
