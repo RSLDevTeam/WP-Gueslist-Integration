@@ -47,15 +47,34 @@ final class Guestlist_Integration_Api_Client {
     }
 
     public function register_franchise(array $payload) {
+        $integration = Guestlist_Integration_Settings::get('integration_name');
+        if (!is_string($integration) || !preg_match('/\A[a-zA-Z0-9_-]+\z/', $integration)) {
+            return new WP_Error('guestlist_invalid_mapping', __('Invalid integration name.', 'guestlist-integration'));
+        }
+        $id_field = $integration . '_id';
+
+        if ('integration_id' !== $id_field && array_key_exists('integration_id', $payload)) {
+            if (array_key_exists($id_field, $payload) && $payload[$id_field] !== $payload['integration_id']) {
+                return new WP_Error('guestlist_conflicting_id', __('Registration payload contains conflicting integration IDs.', 'guestlist-integration'));
+            }
+            $payload[$id_field] = $payload['integration_id'];
+            unset($payload['integration_id']);
+        }
+
         return $this->request('POST', '/api/franchise/register', $payload);
     }
 
-    public function change_franchise_status(int $backstage_id, string $action, string $reason = '') {
-        if ($backstage_id <= 0 || !in_array($action, ['disable', 'reenable'], true)) {
+    public function change_franchise_status(int $integration_id, string $action, string $reason = '') {
+        if ($integration_id <= 0 || !in_array($action, ['disable', 'reenable'], true)) {
             return new WP_Error('guestlist_invalid_action', __('Invalid franchise action.', 'guestlist-integration'));
         }
 
-        return $this->request('POST', sprintf('/api/franchise/backstage/%d/%s', $backstage_id, $action),
+        $integration = Guestlist_Integration_Settings::get('integration_name');
+        if (!is_string($integration) || !preg_match('/\A[a-zA-Z0-9_-]+\z/', $integration)) {
+            return new WP_Error('guestlist_invalid_mapping', __('Invalid integration name.', 'guestlist-integration'));
+        }
+
+        return $this->request('POST', sprintf('/api/franchise/%s/%d/%s', $integration, $integration_id, $action),
             'disable' === $action && $reason ? ['reason' => sanitize_text_field($reason)] : []);
     }
 

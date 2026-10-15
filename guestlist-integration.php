@@ -55,11 +55,11 @@ function guestlist_integration_register_franchise(array $payload, array $context
 /**
  * Update a franchise's status through the standard project adapter contract.
  *
- * @param int    $backstage_id Guestlist Backstage franchise ID.
+ * @param int    $integration_id Project integration ID used by Guestlist.
  * @param string $action disable or reenable.
  * @param string $reason Optional reason for a disable.
  * @param array  $context Optional project-only context.
  */
-function guestlist_integration_change_franchise_status(int $backstage_id, string $action, string $reason = '', array $context = []): void {
-    do_action('guestlist_integration_change_franchise_status', $backstage_id, $action, $reason, $context);
+function guestlist_integration_change_franchise_status(int $integration_id, string $action, string $reason = '', array $context = []): void {
+    do_action('guestlist_integration_change_franchise_status', $integration_id, $action, $reason, $context);
 }

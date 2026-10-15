@@ -19,6 +19,7 @@ final class Guestlist_Integration_Settings {
             'api_url' => '',
             'api_email' => '',
             'api_password' => '',
+            'integration_name' => 'backstage',
             'default_currency' => 'gbp',
             'booking_webhook_secret' => '',
         ]);
@@ -54,6 +55,7 @@ final class Guestlist_Integration_Settings {
             'api_url' => __('Guestlist API URL', 'guestlist-integration'),
             'api_email' => __('API email', 'guestlist-integration'),
             'api_password' => __('API password', 'guestlist-integration'),
+            'integration_name' => __('Integration name', 'guestlist-integration'),
             'default_currency' => __('Default currency', 'guestlist-integration'),
             'booking_webhook_secret' => __('Booking webhook secret', 'guestlist-integration'),
         ] as $key => $label) {
@@ -72,11 +74,18 @@ final class Guestlist_Integration_Settings {
             $url = $current['api_url'];
         }
 
+        $integration = $input['integration_name'] ?? $current['integration_name'];
+        if (!is_string($integration) || !preg_match('/\A[a-zA-Z0-9_-]+\z/', $integration)) {
+            add_settings_error(self::OPTION, 'integration_name_invalid', __('Integration name must contain only letters, numbers, underscores, or hyphens.', 'guestlist-integration'));
+            $integration = $current['integration_name'];
+        }
+
         return [
             'enabled' => !empty($input['enabled']) ? 'yes' : 'no',
             'api_url' => untrailingslashit($url),
             'api_email' => sanitize_email($input['api_email'] ?? ''),
             'api_password' => '' === (string) ($input['api_password'] ?? '') ? $current['api_password'] : (string) $input['api_password'],
+            'integration_name' => $integration,
             'default_currency' => in_array($currency, ['gbp', 'eur', 'usd'], true) ? $currency : 'gbp',
             'booking_webhook_secret' => '' === (string) ($input['booking_webhook_secret'] ?? '') ? $current['booking_webhook_secret'] : sanitize_text_field($input['booking_webhook_secret']),
         ];
@@ -97,8 +106,11 @@ final class Guestlist_Integration_Settings {
             echo '</select>';
         } else {
             $secret = in_array($key, ['api_password', 'booking_webhook_secret'], true);
-            $type = $secret ? 'password' : ('api_email' === $key ? 'email' : 'url');
+            $type = $secret ? 'password' : ('api_email' === $key ? 'email' : ('api_url' === $key ? 'url' : 'text'));
             echo '<input class="regular-text" type="' . esc_attr($type) . '" name="' . esc_attr($name) . '" value="' . ($secret ? '' : esc_attr($value)) . '" autocomplete="off" ' . ($secret ? 'placeholder="' . esc_attr($value ? __('Saved; leave blank to keep', 'guestlist-integration') : '') . '"' : '') . '>';
+            if ('integration_name' === $key) {
+                echo '<p class="description">' . esc_html__('For example, partner uses partner in status URLs and partner_id for registration IDs. Default: backstage.', 'guestlist-integration') . '</p>';
+            }
         }
     }
 

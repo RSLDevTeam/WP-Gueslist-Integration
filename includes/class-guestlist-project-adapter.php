@@ -37,15 +37,15 @@ final class Guestlist_Integration_Project_Adapter {
     /**
      * Change a franchise's Guestlist status from a project lifecycle event.
      *
-     * @param int    $backstage_id Guestlist Backstage franchise ID.
+     * @param int    $integration_id Project integration ID used by Guestlist.
      * @param string $action disable or reenable.
      * @param string $reason Optional human-readable reason for a disable.
      * @param array  $context Optional project context; never sent to the API.
      */
-    public static function change_franchise_status(int $backstage_id, string $action, string $reason = '', array $context = []): void {
+    public static function change_franchise_status(int $integration_id, string $action, string $reason = '', array $context = []): void {
         self::complete(
             'change_franchise_status',
-            guestlist_integration_client()->change_franchise_status($backstage_id, $action, $reason),
+            guestlist_integration_client()->change_franchise_status($integration_id, $action, $reason),
             $context
         );
     }

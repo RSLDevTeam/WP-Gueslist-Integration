@@ -12,7 +12,27 @@ The API client is available to project-specific code through `guestlist_integrat
 $response = guestlist_integration_client()->register_franchise($payload);
 ```
 
-The client handles Guestlist login, token caching, bearer authorization, and one retry after HTTP 401. It also exposes `change_franchise_status($backstage_id, 'disable'|'reenable', $reason)`.
+The client handles Guestlist login, token caching, bearer authorization, and one retry after HTTP 401. It also exposes `change_franchise_status($integration_id, 'disable'|'reenable', $reason)`.
+
+## Custom integration and ID mapping
+
+Under **Settings → Guestlist Integration**, set **Integration name** (default: `backstage`). The plugin automatically uses this name in status URLs and derives the registration ID field by appending `_id`.
+
+For example, entering `partner` uses `/api/franchise/partner/{id}/{action}` and maps a generic `integration_id` in registration payloads to `partner_id`:
+
+```php
+guestlist_integration_register_franchise([
+    'integration_id' => 123,
+    // Other registration fields required by your Guestlist API.
+]); // Sends partner_id: 123 to /api/franchise/register.
+
+guestlist_integration_change_franchise_status(123, 'disable', 'Subscription cancelled');
+// Calls /api/franchise/partner/123/disable.
+```
+
+Both helpers and direct API client calls use this setting. Existing payloads that already use the configured field are preserved. When `integration_id` and the configured field both appear, their values must match exactly; conflicting IDs return an error without sending a request. The plugin does not infer or store local-to-remote ID associations: projects must supply the correct integration ID. The name accepts letters, numbers, underscores, and hyphens. An invalid name retains the previous value.
+
+The default preserves the existing Backstage endpoints and payloads. Custom slugs and fields must also be supported by your Guestlist API; changing the WordPress setting does not create server routes or fields.
 
 ## Project adapters
 
@@ -24,7 +44,7 @@ guestlist_integration_register_franchise($payload, [
     'source_id' => $local_franchise_id,
 ]);
 
-guestlist_integration_change_franchise_status($backstage_id, 'disable', 'Subscription cancelled');
+guestlist_integration_change_franchise_status($integration_id, 'disable', 'Subscription cancelled');
 ```
 
 Alternatively, projects can emit the `guestlist_integration_register_franchise` and `guestlist_integration_change_franchise_status` actions directly.
@@ -34,7 +54,7 @@ Alternatively, projects can emit the `guestlist_integration_register_franchise` 
 | Hook | Arguments | Purpose |
 | --- | --- | --- |
 | `guestlist_integration_register_franchise` | `$payload, $context` | Send a normalized franchise-registration payload. |
-| `guestlist_integration_change_franchise_status` | `$backstage_id, $action, $reason, $context` | Disable or re-enable a Guestlist franchise. |
+| `guestlist_integration_change_franchise_status` | `$integration_id, $action, $reason, $context` | Disable or re-enable a Guestlist franchise. |
 | `guestlist_integration_franchise_payload` | `$payload, $context` | Filter the registration payload before it is sent. |
 | `guestlist_integration_request_succeeded` | `$operation, $response, $context` | Record or react to a successful API request. |
 | `guestlist_integration_request_failed` | `$operation, $error, $context` | Log, retry, or alert on a `WP_Error` or non-2xx API response. |
