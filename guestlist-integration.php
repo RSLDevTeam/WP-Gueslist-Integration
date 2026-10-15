@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Guestlist Integration
  * Description: Configurable WordPress integration with the Guestlist API.
- * Version: 1.0.0
+ * Version: 1.1.0
  * Requires at least: 5.8
  * Requires PHP: 7.4
  * Update URI: https://github.com/RSLDevTeam/WP-Gueslist-Integration
@@ -11,7 +11,7 @@
 
 defined('ABSPATH') || exit;
 
-define('GUESTLIST_INTEGRATION_VERSION', '1.0.0');
+define('GUESTLIST_INTEGRATION_VERSION', '1.1.0');
 define('GUESTLIST_INTEGRATION_PATH', plugin_dir_path(__FILE__));
 define('GUESTLIST_INTEGRATION_FILE', __FILE__);
 
