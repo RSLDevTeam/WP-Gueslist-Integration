@@ -20,6 +20,8 @@ final class Guestlist_Integration_Settings {
             'api_email' => '',
             'api_password' => '',
             'integration_name' => 'backstage',
+            'franchise_id_source' => 'integration_id',
+            'franchise_id_key' => '',
             'default_currency' => 'gbp',
             'booking_webhook_secret' => '',
         ]);
@@ -56,6 +58,8 @@ final class Guestlist_Integration_Settings {
             'api_email' => __('API email', 'guestlist-integration'),
             'api_password' => __('API password', 'guestlist-integration'),
             'integration_name' => __('Integration name', 'guestlist-integration'),
+            'franchise_id_source' => __('Franchise ID source', 'guestlist-integration'),
+            'franchise_id_key' => __('Custom ID field / user meta key', 'guestlist-integration'),
             'default_currency' => __('Default currency', 'guestlist-integration'),
             'booking_webhook_secret' => __('Booking webhook secret', 'guestlist-integration'),
         ] as $key => $label) {
@@ -80,12 +84,23 @@ final class Guestlist_Integration_Settings {
             $integration = $current['integration_name'];
         }
 
+        $source = $input['franchise_id_source'] ?? $current['franchise_id_source'];
+        $key = $input['franchise_id_key'] ?? $current['franchise_id_key'];
+        if (!in_array($source, ['integration_id', 'user_id', 'payload_field', 'user_meta'], true) || !is_string($key)
+            || (in_array($source, ['payload_field', 'user_meta'], true) && '' === trim(sanitize_text_field($key)))) {
+            add_settings_error(self::OPTION, 'franchise_id_source_invalid', __('Select an ID source and enter a field or meta key for custom IDs.', 'guestlist-integration'));
+            $source = $current['franchise_id_source'];
+            $key = $current['franchise_id_key'];
+        }
+
         return [
             'enabled' => !empty($input['enabled']) ? 'yes' : 'no',
             'api_url' => untrailingslashit($url),
             'api_email' => sanitize_email($input['api_email'] ?? ''),
             'api_password' => '' === (string) ($input['api_password'] ?? '') ? $current['api_password'] : (string) $input['api_password'],
             'integration_name' => $integration,
+            'franchise_id_source' => $source,
+            'franchise_id_key' => sanitize_text_field($key),
             'default_currency' => in_array($currency, ['gbp', 'eur', 'usd'], true) ? $currency : 'gbp',
             'booking_webhook_secret' => '' === (string) ($input['booking_webhook_secret'] ?? '') ? $current['booking_webhook_secret'] : sanitize_text_field($input['booking_webhook_secret']),
         ];
@@ -98,6 +113,17 @@ final class Guestlist_Integration_Settings {
 
         if ('enabled' === $key) {
             echo '<input type="checkbox" name="' . esc_attr($name) . '" value="yes" ' . checked('yes', $value, false) . '>';
+        } elseif ('franchise_id_source' === $key) {
+            echo '<select name="' . esc_attr($name) . '">';
+            foreach ([
+                'integration_id' => __('Supplied integration_id / API ID', 'guestlist-integration'),
+                'user_id' => __('WordPress user ID (user.id)', 'guestlist-integration'),
+                'payload_field' => __('Custom field from registration data', 'guestlist-integration'),
+                'user_meta' => __('Custom ID from user meta', 'guestlist-integration'),
+            ] as $source => $label) {
+                echo '<option value="' . esc_attr($source) . '" ' . selected($source, $value, false) . '>' . esc_html($label) . '</option>';
+            }
+            echo '</select><p class="description">' . esc_html__('Always sent as bakstagefranchise_id. User sources require user_id in the registration context.', 'guestlist-integration') . '</p>';
         } elseif ('default_currency' === $key) {
             echo '<select name="' . esc_attr($name) . '">';
             foreach (['gbp', 'eur', 'usd'] as $currency) {
@@ -108,8 +134,11 @@ final class Guestlist_Integration_Settings {
             $secret = in_array($key, ['api_password', 'booking_webhook_secret'], true);
             $type = $secret ? 'password' : ('api_email' === $key ? 'email' : ('api_url' === $key ? 'url' : 'text'));
             echo '<input class="regular-text" type="' . esc_attr($type) . '" name="' . esc_attr($name) . '" value="' . ($secret ? '' : esc_attr($value)) . '" autocomplete="off" ' . ($secret ? 'placeholder="' . esc_attr($value ? __('Saved; leave blank to keep', 'guestlist-integration') : '') . '"' : '') . '>';
+            if ('franchise_id_key' === $key) {
+                echo '<p class="description">' . esc_html__('For custom sources, enter the exact top-level payload field or user meta key. Ignored for supplied IDs and WordPress user IDs.', 'guestlist-integration') . '</p>';
+            }
             if ('integration_name' === $key) {
-                echo '<p class="description">' . esc_html__('For example, partner uses partner in status URLs and partner_id for registration IDs. Default: backstage.', 'guestlist-integration') . '</p>';
+                echo '<p class="description">' . esc_html__('Used in status URLs only, for example /api/franchise/partner/{id}/{action}. Default: backstage.', 'guestlist-integration') . '</p>';
             }
         }
     }

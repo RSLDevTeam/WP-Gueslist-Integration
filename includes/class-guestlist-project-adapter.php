@@ -23,15 +23,15 @@ final class Guestlist_Integration_Project_Adapter {
     public static function register_franchise(array $payload, array $context = []): void {
         $payload = apply_filters('guestlist_integration_franchise_payload', $payload, $context);
 
-        if (empty($payload)) {
+        if (!is_array($payload)) {
             do_action('guestlist_integration_request_failed', 'register_franchise', new WP_Error(
-                'guestlist_empty_payload',
-                __('Guestlist franchise payload is empty.', 'guestlist-integration')
+                'guestlist_invalid_payload',
+                __('Guestlist franchise payload must be an array.', 'guestlist-integration')
             ), $context);
             return;
         }
 
-        self::complete('register_franchise', guestlist_integration_client()->register_franchise($payload), $context);
+        self::complete('register_franchise', guestlist_integration_client()->register_franchise($payload, $context), $context);
     }
 
     /**

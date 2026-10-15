@@ -76,6 +76,7 @@ jobs:
           set -euo pipefail
           find . -name '*.php' -print0 | xargs -0 -n 1 php -l
           php tests/updater.php
+          php tests/integration-mapping.php
 
       - name: Commit and tag release
         if: steps.version.outputs.release == 'true'

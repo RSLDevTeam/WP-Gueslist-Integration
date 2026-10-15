@@ -46,22 +46,49 @@ final class Guestlist_Integration_Api_Client {
         return $response;
     }
 
-    public function register_franchise(array $payload) {
-        $integration = Guestlist_Integration_Settings::get('integration_name');
-        if (!is_string($integration) || !preg_match('/\A[a-zA-Z0-9_-]+\z/', $integration)) {
-            return new WP_Error('guestlist_invalid_mapping', __('Invalid integration name.', 'guestlist-integration'));
-        }
-        $id_field = $integration . '_id';
+    /** Resolve the selected local ID and send the fixed Guestlist API field. */
+    public function register_franchise(array $payload, array $context = []) {
+        $field = 'bakstagefranchise_id';
+        $source = Guestlist_Integration_Settings::get('franchise_id_source');
+        $key = Guestlist_Integration_Settings::get('franchise_id_key');
 
-        if ('integration_id' !== $id_field && array_key_exists('integration_id', $payload)) {
-            if (array_key_exists($id_field, $payload) && $payload[$id_field] !== $payload['integration_id']) {
-                return new WP_Error('guestlist_conflicting_id', __('Registration payload contains conflicting integration IDs.', 'guestlist-integration'));
+        if ('integration_id' === $source) {
+            $id = $payload['integration_id'] ?? ($payload[$field] ?? null);
+        } elseif ('payload_field' === $source && is_string($key) && '' !== $key) {
+            $id = $payload[$key] ?? null;
+        } elseif (in_array($source, ['user_id', 'user_meta'], true)) {
+            // Never infer the franchise owner from the logged-in administrator.
+            $user_id = $context['user_id'] ?? null;
+            if (!self::valid_id($user_id) || !get_userdata((int) $user_id)) {
+                return new WP_Error('guestlist_invalid_user', __('Registration requires a valid user_id in context.', 'guestlist-integration'));
             }
-            $payload[$id_field] = $payload['integration_id'];
-            unset($payload['integration_id']);
+            if ('user_meta' === $source && (!is_string($key) || '' === $key)) {
+                return new WP_Error('guestlist_invalid_mapping', __('Enter a user meta key for the franchise ID.', 'guestlist-integration'));
+            }
+            $id = 'user_id' === $source ? $user_id : get_user_meta((int) $user_id, $key, true);
+        } else {
+            return new WP_Error('guestlist_invalid_mapping', __('Invalid franchise ID source.', 'guestlist-integration'));
         }
+
+        if (!self::valid_id($id)) {
+            return new WP_Error('guestlist_invalid_id', __('The selected franchise ID source must contain a positive integer.', 'guestlist-integration'));
+        }
+        if (array_key_exists($field, $payload) && (!self::valid_id($payload[$field]) || (string) $payload[$field] !== (string) $id)) {
+            return new WP_Error('guestlist_conflicting_id', __('Registration payload contains conflicting franchise IDs.', 'guestlist-integration'));
+        }
+
+        unset($payload['integration_id']);
+        if ('payload_field' === $source) {
+            unset($payload[$key]);
+        }
+        $payload[$field] = $id;
 
         return $this->request('POST', '/api/franchise/register', $payload);
+    }
+
+    private static function valid_id($id): bool {
+        return (is_int($id) || is_string($id))
+            && false !== filter_var($id, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
     }
 
     public function change_franchise_status(int $integration_id, string $action, string $reason = '') {

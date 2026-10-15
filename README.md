@@ -14,25 +14,38 @@ $response = guestlist_integration_client()->register_franchise($payload);
 
 The client handles Guestlist login, token caching, bearer authorization, and one retry after HTTP 401. It also exposes `change_franchise_status($integration_id, 'disable'|'reenable', $reason)`.
 
-## Custom integration and ID mapping
+## Franchise ID source and integration name
 
-Under **Settings → Guestlist Integration**, set **Integration name** (default: `backstage`). The plugin automatically uses this name in status URLs and derives the registration ID field by appending `_id`.
+Registration always sends the API field `bakstagefranchise_id` (this spelling is the API contract). The **Integration name** setting only controls status URLs, for example `/api/franchise/partner/{id}/{action}`. It never changes the registration field name.
 
-For example, entering `partner` uses `/api/franchise/partner/{id}/{action}` and maps a generic `integration_id` in registration payloads to `partner_id`:
+Under **Settings → Guestlist Integration**, choose **Franchise ID source**:
+
+| Source | Where the value comes from |
+| --- | --- |
+| Supplied integration_id / API ID (default) | Payload `integration_id`, or an explicit `bakstagefranchise_id`. |
+| WordPress user ID (user.id) | The WordPress user identified by `user_id` in registration context. |
+| Custom field from registration data | The top-level payload field named in **Custom ID field / user meta key**. |
+| Custom ID from user meta | The named user meta field for the context's `user_id`. |
+
+For example, select **WordPress user ID (user.id)** and call:
 
 ```php
 guestlist_integration_register_franchise([
-    'integration_id' => 123,
     // Other registration fields required by your Guestlist API.
-]); // Sends partner_id: 123 to /api/franchise/register.
-
-guestlist_integration_change_franchise_status(123, 'disable', 'Subscription cancelled');
-// Calls /api/franchise/partner/123/disable.
+], ['user_id' => 123]); // Sends bakstagefranchise_id: 123.
 ```
 
-Both helpers and direct API client calls use this setting. Existing payloads that already use the configured field are preserved. When `integration_id` and the configured field both appear, their values must match exactly; conflicting IDs return an error without sending a request. The plugin does not infer or store local-to-remote ID associations: projects must supply the correct integration ID. The name accepts letters, numbers, underscores, and hyphens. An invalid name retains the previous value.
+For a custom payload ID, select **Custom field from registration data**, enter `customer_id` as the key, and provide `customer_id` in the payload. For a custom user ID stored in user meta, select **Custom ID from user meta**, enter the meta key, and provide `user_id` in context; the plugin reads the stored value automatically. The plugin uses the specified user, never the currently logged-in administrator. Direct client calls also accept context: `guestlist_integration_client()->register_franchise($payload, ['user_id' => 123])`.
 
-The default preserves the existing Backstage endpoints and payloads. Custom slugs and fields must also be supported by your Guestlist API; changing the WordPress setting does not create server routes or fields.
+The selected ID must be a positive integer. Missing IDs, nonexistent users, invalid source settings, and conflicting explicit `bakstagefranchise_id` values fail without sending a request. The mapping removes the local `integration_id` or selected custom payload field and sends its value as `bakstagefranchise_id`. All other registration fields remain unchanged. Existing adapters sending `backstage_id` or a name-derived field must switch to `integration_id`, `bakstagefranchise_id`, or configure that existing field as the custom source.
+
+Status changes still take the resolved integration ID explicitly:
+
+```php
+guestlist_integration_change_franchise_status(123, 'disable', 'Subscription cancelled');
+```
+
+Integration names accept letters, numbers, underscores, and hyphens and must also be supported by your Guestlist server. Changing the WordPress setting does not create server routes.
 
 ## Project adapters
 
